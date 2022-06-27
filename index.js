@@ -4,63 +4,38 @@ const express = require('express');
 const expressPlayground = require('graphql-playground-middleware-express').default;
 const { readFileSync } = require('fs');
 
+const { MongoClient } = require('mongodb');
+require('dotenv').config();
+
 const typeDefs = readFileSync('./typeDefs.graphql', 'UTF-8');
 const resolvers = require('./resolvers');
 
-// 写真を格納するための配列を定義する
-// var _id = 0;
-// var users = [
-//     {"githubLogin": "oijfweauhfewauio", "name": "hoge tarou"},
-//     {"githubLogin": "jidfoewauihuieasw", "name": "fuga jirou"},
-//     {"githubLogin": "uhujikolk", "name": "piyo saburou"},
-// ]
+async function start() {
+    const app = express();
+    const MONGO_DB = process.env.DB_HOST;
+    const client = await MongoClient.connect(
+        MONGO_DB,
+        { useNewUrlParser: true }
+    );
+    const db = client.db();
+    const server = new ApolloServer({
+        typeDefs,
+        resolvers,
+        context: async ({ req }) => {
+            const githubToken = req.headers.authorization
+            const currentUser = await db.collection('users').findOne({ githubToken })
+            return { db, currentUser }
+        }
+    });
 
-// var photos = [
-//     {
-//         "id": "1",
-//         "name": "aaaaaaaa",
-//         "description":"aaaaaaaaaaaaaaaa",
-//         "category":"ACTION",
-//         "githubUser":"oijfweauhfewauio",
-//         "created":"3-28-2017",
-//     },
-//     {
-//         "id": "2",
-//         "name": "bbbbbbb",
-//         "description":"bbbbbbbbbbbbbb",
-//         "category":"SELFIE",
-//         "githubUser":"jidfoewauihuieasw",
-//         "created":"4-29-2018",
-//     },
-//     {
-//         "id": "3",
-//         "name": "cccccccccc",
-//         "description":"cccccccccccccccccccc",
-//         "category":"LANDSCAPE",
-//         "githubUser":"uhujikolk",
-//         "created":"5-30-2019",
-//     },
-// ]
+    server.applyMiddleware({ app })
 
-// var tags = [
-//     { "photoId": "1", "userId":"oijfweauhfewauio" },
-//     { "photoId": "2", "userId":"jidfoewauihuieasw" },
-//     { "photoId": "2", "userId":"uhujikolk" },
-//     { "photoId": "2", "userId":"oijfweauhfewauio" },
-// ]
+    app.get(`/`, (req, res) => res.end(`Welcome to the PhotoShare API`));
+    app.get(`/playground`, expressPlayground({ endpoint: `/graphql` }))
 
-// 2.express()を呼び出し Express アプリケーションを作成する
-var app = express();
-const server = new ApolloServer({ typeDefs, resolvers });
+    app.listen({ port: 4000 }, () =>
+        console.log(`GraphQL Server running at http://localhost:4000${server.graphqlPath}`)
+    )
+}
 
-// 3.applyMiddleware()を呼び出しExpressにミドルウェアを追加する
-server.applyMiddleware({ app });
-
-//4.ホームルートを作成する
-app.get(`/`, (req, res) => res.end(`Welcome to the PhotoShare API`));
-app.get(`/playground`, expressPlayground({ endpoint: `/graphql` }))
-
-// 5.特定のポートでリッスンする
-app.listen({ port: 4000 }, () =>
-    console.log(`GraphQL Server running @ http://localhost:4000${server.graphqlPath}`)
-);
+start()
