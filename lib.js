@@ -23,6 +23,7 @@ async function requestGithubToken(credentials) {
     const hoge = await res.json();
     return hoge;
 }
+
 async function requestGithubUserAccount(access_token) {
     const res = await fetch(`https://api.github.com/user`, {
         headers:{
@@ -32,6 +33,7 @@ async function requestGithubUserAccount(access_token) {
     const hoge = await res.json();
     return hoge;
 }
+
 const authorizeWithGithub = async credentials => {
     const { access_token } = await requestGithubToken(credentials);
     const githubUser = await requestGithubUserAccount(access_token);
